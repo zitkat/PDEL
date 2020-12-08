@@ -1,4 +1,8 @@
 """
+This code was taken and modified from https://github.com/NVlabs/SPADE
+
+Original copyright:
+
 Copyright (C) 2019 NVIDIA Corporation.  All rights reserved.
 Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
 """
@@ -7,7 +11,8 @@ import re
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from models.networks.sync_batchnorm import SynchronizedBatchNorm2d
+from model.sync_batchnorm import SynchronizedBatchNorm2d, \
+    SynchronizedBatchNorm3d
 import torch.nn.utils.spectral_norm as spectral_norm
 
 
@@ -36,6 +41,7 @@ def get_nonspade_norm_layer(opt, norm_type='instance'):
             delattr(layer, 'bias')
             layer.register_parameter('bias', None)
 
+        # TODO what with 2D norms?
         if subnorm_type == 'batch':
             norm_layer = nn.BatchNorm2d(get_out_channel(layer), affine=True)
         elif subnorm_type == 'sync_batch':
@@ -75,17 +81,17 @@ class SPADE3D(nn.Module):
         ks = int(parsed.group(2))
 
         if param_free_norm_type == 'instance':
-            self.param_free_norm = nn.InstanceNorm2d(norm_nc, affine=False)
+            self.param_free_norm = nn.InstanceNorm3d(norm_nc, affine=False)
         elif param_free_norm_type == 'syncbatch':
-            self.param_free_norm = SynchronizedBatchNorm2d(norm_nc, affine=False)
+            self.param_free_norm = SynchronizedBatchNorm3d(norm_nc, affine=False)
         elif param_free_norm_type == 'batch':
-            self.param_free_norm = nn.BatchNorm2d(norm_nc, affine=False)
+            self.param_free_norm = nn.BatchNorm3d(norm_nc, affine=False)
         else:
             raise ValueError('%s is not a recognized param-free norm type in SPADE'
                              % param_free_norm_type)
 
         # The dimension of the intermediate embedding space. Yes, hardcoded. -- well fuck you!
-        nhidden = 32  # TODO original: 128 is too memory intesive, is this enough?
+        nhidden = 128  # TODO original: 128 is too memory intensive, is this enough?
 
         pw = ks // 2
         self.mlp_shared = nn.Sequential(

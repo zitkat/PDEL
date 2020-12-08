@@ -1,4 +1,8 @@
 """
+This code was taken and modified from https://github.com/NVlabs/SPADE
+
+Original copyright:
+
 Copyright (C) 2019 NVIDIA Corporation.  All rights reserved.
 Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
 """
@@ -8,7 +12,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 import torch.nn.utils.spectral_norm as spectral_norm
-from PDEL.normalization import SPADE3D
+
+
+from model.normalization import SPADE3D
 
 
 # ResNet block that uses SPADE.
