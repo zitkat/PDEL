@@ -4,11 +4,15 @@ John Hopkins Turbulenece Database
 """
 
 import os
+import sys
+import time
 from functools import wraps
 from pathlib import Path
+import argparse
+import csv
+
 import numpy as np
 import h5py
-
 import pyJHTDB
 from pyJHTDB import dbinfo as tdbinfo
 
@@ -37,21 +41,28 @@ data_folder = r"C:\Users\tozit\MLProjects\PDEL\PDEL\dataset"
 #
 
 
-# 128 x 128 x 128 x 3 ~~ 24 MB -> 120 GB
-# 32 x 32 x 32 x 3 ~~ 0.526 KB = 526 kB -> 2.5 GB
+# 128 x 128 x 128 x 3 ~~ 24 MB x 5028 -> 120 GB
+# 32 x 32 x 32 x 3 ~~ 0.526 MB = 526 kB -> 2.5 GB
 
 def write_cut2hdf5(u, nt, file_path: Path):
 
-    with h5py.File(file_path.with_suffix(".hdf5"), "w") as f:
+    with h5py.File(file_path.with_suffix(".h5"), "w") as f:
         f.create_dataset("u", data=u)
         f.attrs.modify("nt", nt)
 
 
 def read_cutfromhdf5(nt: int = None, file_path: Path = None):
-    with h5py.File(file_path.with_suffix(".hdf5"), "w") as f:
+    with h5py.File(file_path.with_suffix(".h5"), "w") as f:
         u = f["u"]
 
     return u
+
+
+def now():
+    """
+    :return: date and time as YYYYmmddhhMM
+    """
+    return time.strftime("%Y%m%d%H%M")
 
 
 class DataDownLoader:
@@ -66,7 +77,7 @@ class DataDownLoader:
         self.lJHTDB.add_token(auth_token)
 
 
-    def get_signle_step(self, nt=16):
+    def get_single_step(self, nt=16):
         u = self.lJHTDB.getbigCutout(
                 t_start=nt, t_end=nt,
                 start=np.array([1, 1, 1], dtype=np.int),
@@ -76,20 +87,52 @@ class DataDownLoader:
         return u
 
 
-    def get_multiple_steps(self):
-        for t in range(16, 20):
-            u = self.get_signle_step(t)
-            file_path = Path(f"dltest/{t:04}_isotropic1024coarse_128")
-            write_cut2hdf5(u, t, ensured_path(file_path))
+    def save_steps(self, tstart: int, tend: int,  folder: Path):
+        with open(folder / ("summary" + now() + ".csv"), "w", newline='') as summary_csv:
+            summary_writer = csv.writer(summary_csv)
+            summary_writer.writerow(["Timestep", "Downloadtime"])
+            for t in range(tstart, tend + 1):
+                wstart = time.time()
+                u = self.get_single_step(t)
+                wend = time.time()
+                summary_writer.writerow([t, wend - wstart])
+                file_path = folder / Path(f"dltest/{t:04}_isotropic1024coarse_128")
+                write_cut2hdf5(u, t, ensured_path(file_path))
 
 
     def finalize(self):
         self.lJHTDB.finalize()
 
 
-if __name__ == '__main__':
+def main(argv):
+    if argv is None:
+        argv = sys.argv[1:]
+
+    parser = argparse.ArgumentParser(description='Script for detection of loupez in hives',
+                                     epilog='(c) 2020 by T. Zitka and L. Picek, KKY UWB')
+
+    parser.add_argument("-o", "--output",
+                        help="Output directory, for everything: logfile, images and summary",
+                        dest="output_dir",
+                        metavar='path',
+                        type=Path)
+    parser.add_argument("-te", "--tend",
+                        help="Last time to download, max 5028, min 0",
+                        type=int,
+                        default=16)
+    parser.add_argument("-ts", "--tstart",
+                        help="First time to download, max 5028, min 0",
+                        type=int,
+                        default=16)
+
+    args = parser.parse_args(argv)
+
     dl = DataDownLoader()
-    dl.get_signle_step()
-
-
+    dl.save_steps(args.tstart, args.tend, args.output_dir)
     dl.finalize()
+
+
+if __name__ == '__main__':
+    main(None)
+
+
