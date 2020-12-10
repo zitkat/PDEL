@@ -96,6 +96,7 @@ class DataDownLoader:
                 u = self.get_single_step(t)
                 wend = time.time()
                 summary_writer.writerow([t, wend - wstart])
+                summary_csv.flush()
                 file_path = folder / Path(f"dltest/{t:04}_isotropic1024coarse_128")
                 write_cut2hdf5(u, t, ensured_path(file_path))
 
