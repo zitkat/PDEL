@@ -1,5 +1,6 @@
 from typing import Any
 
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -10,9 +11,6 @@ from dataset import Shapes
 
 
 class PDELGenerator(BaseNetwork):
-
-    def _forward_unimplemented(self, *input: Any) -> None:
-        pass
 
     def __init__(self, opt):
         super().__init__()
@@ -28,6 +26,9 @@ class PDELGenerator(BaseNetwork):
         self.up = nn.Upsample(scale_factor=2)
 
         self.conv2 = nn.Conv3d(16, Shapes.soutc, kernel_size=3, padding=1)
+
+        self.constrain = PDELDivergenceConstraint(opt)
+        pass
 
     def forward(self, segmap):
 
@@ -46,11 +47,30 @@ class PDELGenerator(BaseNetwork):
 
         x = self.conv2(x)
 
-        # x = torch.fft(x, 1)
-
-        # TODO constraints
+        x = self.constrain(x)
 
         return x
 
 
+class PDELDivergenceConstraint(nn.Module):
+
+    def __init__(self, opt):
+        super().__init__()
+        device = opt.gpu_ids[0]
+        k_ = torch.arange(128)
+        self.register_buffer("k", torch.empty((3, 128, 128, 128)))
+        self.k[0], self.k[1], self.k[2] = torch.meshgrid(k_, k_, k_)
+        self.register_buffer("kk", torch.sum(self.k ** 2, axis=0))
+
+
+    def forward(self, f):
+        f_complex = torch.zeros(f.shape + (2,), device=f.device)
+        f_complex[..., 0] = f
+        F = f_complex.fft(3)
+        # f_complex = torch.randn((1, 3, 128, 128, 128, 2))
+        hatF = F - torch.einsum('txyz,bkxyzc,txyz->bkxyzc', self.k, F, self.k) / \
+                   self.kk[None, None, ..., None]
+
+        hatf = hatF.ifft(3)
+        return hatf
 
