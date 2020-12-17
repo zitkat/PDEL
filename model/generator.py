@@ -3,6 +3,7 @@ from typing import Any
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.fft
 
 from model.base_network import BaseNetwork
 
@@ -27,7 +28,7 @@ class PDELGenerator(BaseNetwork):
 
         self.conv2 = nn.Conv3d(16, Shapes.soutc, kernel_size=3, padding=1)
 
-        self.constrain = PDELDivergenceConstraint(opt)
+        self.constrain = PDELDivergenceConstraint()
         pass
 
     def forward(self, segmap):
@@ -54,23 +55,31 @@ class PDELGenerator(BaseNetwork):
 
 class PDELDivergenceConstraint(nn.Module):
 
-    def __init__(self, opt):
+    def __init__(self):
         super().__init__()
-        device = opt.gpu_ids[0]
         k_ = torch.arange(128)
         self.register_buffer("k", torch.empty((3, 128, 128, 128)))
         self.k[0], self.k[1], self.k[2] = torch.meshgrid(k_, k_, k_)
-        self.register_buffer("kk", torch.sum(self.k ** 2, axis=0))
+        self.register_buffer("kk", torch.sum(self.k ** 2, axis=0)[None, None, ...])
 
 
     def forward(self, f):
-        f_complex = torch.zeros(f.shape + (2,), device=f.device)
-        f_complex[..., 0] = f
-        F = f_complex.fft(3)
-        # f_complex = torch.randn((1, 3, 128, 128, 128, 2))
-        hatF = F - torch.einsum('txyz,bkxyzc,txyz->bkxyzc', self.k, F, self.k) / \
-                   self.kk[None, None, ..., None]
+        F = torch.fft.fftn(f, dim=(2, 3, 4))
+        dF = torch.einsum('kxyz,btxyz,txyz->btxyz',
+                          -1j * self.k, F, -1j * self.k) / \
+                   self.kk
+        dF[torch.isnan(dF)] = 0
+        hatF = F - dF
+        hatf = torch.fft.ifftn(hatF, dim=(2, 3, 4))
 
-        hatf = hatF.ifft(3)
         return hatf
 
+
+if __name__ == '__main__':
+    from dataset.forced_isotropic_dataset import load_cutservice_file
+    file = load_cutservice_file("../dataset/prep/isotropic1024coarse_test128_16.h5")
+    constr = PDELDivergenceConstraint().cuda(0)
+    x = torch.ones((1, 3, 128, 128, 128))
+    y = constr(file)
+
+    pass
