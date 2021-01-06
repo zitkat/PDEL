@@ -2,18 +2,20 @@
 
 import argparse
 import sys
+from pathlib import Path
 
 import torch
+from torch import optim
+from torch.utils.data import DataLoader
+
 
 # local imports
-from model.generator import PDELGenerator
-from model.discriminator import PDELDiscriminator
-from dataset.forced_isotropic_dataset import load_cutservice_file, ForcedIsotropicDataset
+from model.networks.generator import PDELGenerator
+from model.networks.discriminator import PDELDiscriminator
+from dataset.forced_isotropic_dataset import ForcedIsotropicDataset
 
 from model.sync_batchnorm import DataParallelWithCallback
 
-
-files = load_cutservice_file("dataset/prep/isotropic1024coarse_test32_16.h5")
 
 
 
@@ -39,6 +41,10 @@ def parse_gpu_ids(str_ids):
 def parse_options(argv):
     parser = argparse.ArgumentParser()
 
+    parser.add_argument("-d", "--dataset_path",
+                        type=Path,
+                        help="Path to root directory wtih h5 files")
+
     parser.add_argument('--gpu_ids', type=parse_gpu_ids, default=[0],
                         help='gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU')
     parser.add_argument('--checkpoints_dir', type=str, default='./checkpoints',
@@ -50,8 +56,10 @@ def parse_options(argv):
     parser.set_defaults(norm_G='spectralspadesyncbatch3x3')
     parser.add_argument('--norm_D', type=str, default='spectralinstance',
                         help='instance normalization or batch normalization')
-    parser.add_argument('--batchSize', type=int, default=1,
+    parser.add_argument('-bs', '--batch_size', type=int, default=1,
                         help='input batch size')
+    parser.add_argument('--lr', type=float, default=0.0002,
+                        help='initial learning rate for adam')
     parser.add_argument('--niter', type=int, default=50,
                         help='# of iter at starting learning rate. This is NOT '
                              'the total #epochs. Total #epochs is niter + niter_decay')
@@ -60,6 +68,8 @@ def parse_options(argv):
     parser.add_argument('-citl', '--constraint_in_the_loop', action="store_true",
                         # destination="constraint_in_the_loop",
                         help='Include constrain in the training loop.')
+    parser.add_argument('--D_steps_per_G', type=int, default=1,
+                        help='number of discriminator iterations per generator iterations.')
 
     opt, unknown = parser.parse_known_args(argv)
 
@@ -72,17 +82,36 @@ def main(argv):
 
     opt = parse_options(argv)
 
+    dataset = ForcedIsotropicDataset(root_dir=opt.dataset_path)
+
+    dataloader = DataLoader(dataset, batch_size=opt.batch_size, shuffle=True)
+
     netG = DataParallelWithCallback(PDELGenerator(opt),
                                     device_ids=opt.gpu_ids)
+    optimG = optim.Adam(netG.parameters(), lr=opt.lr)
+
     netD = DataParallelWithCallback(PDELDiscriminator(),
                                     device_ids=opt.gpu_ids)
+
+    optimD = optim.Adam(netD.parameters(), lr=opt.lr)
+
     epochs = range(1)
 
     for epoch in epochs:
-        for i, data_i in enumerate([files]):
-            x = netG.forward(data_i)
-            dx = netD.forward(data_i, x)
-            pass
+        for i, (time_i, data_i) in enumerate(dataloader):
+            if i % opt.D_steps_per_G == 0:
+                optimG.zero_grad()
+                x = netG.forward(data_i)
+                dx = netD.forward(data_i, x)
+                loss = torch.abs(1 - dx)
+                loss.backward()
+                optimG.step()
+
+            optimD.zero_grad()
+            dx = netD.forward(data_i, data_i)
+            loss = torch.abs(1 - dx)
+            loss.backward()
+            optimD.step()
 
 
 if __name__ == '__main__':
