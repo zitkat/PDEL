@@ -14,7 +14,7 @@ import torchvision
 import torch.nn.utils.spectral_norm as spectral_norm
 
 
-from model.normalization import SPADE3D
+from model.networks.normalization import SPADE3D
 
 
 # ResNet block that uses SPADE.

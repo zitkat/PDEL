@@ -1,13 +1,11 @@
-from typing import Any
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.fft
 
-from model.base_network import BaseNetwork
+from model.networks.base_network import BaseNetwork
 
-from model.architecture import SPADE3DResnetBlock
+from model.networks.architecture import SPADE3DResnetBlock
 from dataset import Shapes
 
 
@@ -72,14 +70,14 @@ class PDELDivergenceConstraint(nn.Module):
         hatF = F - dF
         hatf = torch.fft.ifftn(hatF, dim=(2, 3, 4))
 
-        return hatf
+        return hatf.real
 
 
 if __name__ == '__main__':
     from dataset.forced_isotropic_dataset import load_cutservice_file
-    file = load_cutservice_file("../dataset/prep/isotropic1024coarse_test128_16.h5")
-    constr = PDELDivergenceConstraint().cuda(0)
-    x = torch.ones((1, 3, 128, 128, 128))
+    file = load_cutservice_file(
+        "../../dataset/prep/isotropic1024coarse_test128_16.h5")
+    constr = PDELDivergenceConstraint() #.cuda(0)
     y = constr(file)
 
     pass

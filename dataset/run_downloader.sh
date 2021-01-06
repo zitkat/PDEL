@@ -13,6 +13,7 @@
 ## pyJHTDB requirements
 #conda install sympy
 #python -m pip install pyJHTDB
+#chmod u+x run_donwloader.sh
 
 module add anaconda3-2019.10
 source activate DL_env

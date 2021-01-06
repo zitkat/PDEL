@@ -88,7 +88,7 @@ class DataDownLoader:
 
 
     def save_steps(self, tstart: int, tend: int,  folder: Path):
-        with open(folder / ("summary" + now() + ".csv"), "w", newline='') as summary_csv:
+        with open(ensured_path(folder / ("summary" + now() + ".csv")), "w", newline='') as summary_csv:
             summary_writer = csv.writer(summary_csv)
             summary_writer.writerow(["Timestep", "Downloadtime"])
             for t in range(tstart, tend + 1):
@@ -97,7 +97,7 @@ class DataDownLoader:
                 wend = time.time()
                 summary_writer.writerow([t, wend - wstart])
                 summary_csv.flush()
-                file_path = folder / Path(f"dltest/{t:04}_isotropic1024coarse_128")
+                file_path = folder / Path(f"{t:04}_isotropic1024coarse_128")
                 write_cut2hdf5(u, t, ensured_path(file_path))
 
 
