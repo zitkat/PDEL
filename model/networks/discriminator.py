@@ -74,20 +74,17 @@ class PDELDiscriminator(BaseNetwork):
 
 
 
-    def forward(self, lowres, highres):
+    def forward(self, fake_and_real):
 
-        lowres_up = F.interpolate(lowres, size=Shapes.sout[1:])
-        x = torch.cat((highres, lowres_up), dim=1)
-
-        x = self.LReLu(self.conv1(x))
-        x = self.LReLu(self.conv2(x))
-        x = self.LReLu(self.conv3(x))
-        x = self.LReLu(self.conv4(x))
-        x = self.LReLu(self.instance_norm(x))
-        x = self.conv_last(x)
+        fake_and_real = self.LReLu(self.conv1(fake_and_real))
+        fake_and_real = self.LReLu(self.conv2(fake_and_real))
+        fake_and_real = self.LReLu(self.conv3(fake_and_real))
+        fake_and_real = self.LReLu(self.conv4(fake_and_real))
+        fake_and_real = self.LReLu(self.instance_norm(fake_and_real))
+        fake_and_real = self.conv_last(fake_and_real)
 
 
-        return x
+        return fake_and_real
 
 
 
