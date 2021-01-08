@@ -1,4 +1,6 @@
 """
+Based on https://github.com/NVlabs/SPADE
+
 Copyright (C) 2019 NVIDIA Corporation.  All rights reserved.
 Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
 """
@@ -12,15 +14,19 @@ from PIL import Image
 import os
 import argparse
 
-# returns a configuration for creating a generator
-# |default_opt| should be the opt of the current experiment
-# |**kwargs|: if any configuration should be overriden, it can be specified here
+
 def copyconf(default_opt, **kwargs):
+    """
+    returns a configuration for creating a generator
+    |default_opt| should be the opt of the current experiment
+    |**kwargs|: if any configuration should be overriden, it can be specified here
+    """
     conf = argparse.Namespace(**vars(default_opt))
     for key in kwargs:
         print(key, kwargs[key])
         setattr(conf, key, kwargs[key])
     return conf
+
 
 def save_image(image_numpy, image_path, create_dir=False):
     if create_dir:
@@ -53,11 +59,11 @@ def atoi(text):
 
 
 def natural_keys(text):
-    '''
+    """
     alist.sort(key=natural_keys) sorts in human order
     http://nedbatchelder.com/blog/200712/human_sorting.html
     (See Toothy's implementation in the comments)
-    '''
+    """
     return [atoi(c) for c in re.split('(\d+)', text)]
 
 

@@ -2,6 +2,7 @@
 
 import argparse
 import sys
+from collections import OrderedDict
 from pathlib import Path
 
 import torch
@@ -12,6 +13,8 @@ from torch.utils.data import DataLoader
 # local imports
 from dataset.forced_isotropic_dataset import ForcedIsotropicDataset
 from model.pdel_trainer import PDELTrainer
+from util.iter_counter import IterationCounter
+from util.visualizer import Visualizer
 
 
 def parse_gpu_ids(str_ids):
@@ -36,12 +39,15 @@ def parse_gpu_ids(str_ids):
 def parse_options(argv):
     parser = argparse.ArgumentParser()
 
+    parser.add_argument('--name', type=str, default='pdel_train_test',
+                        help='name of the experiment. It decides where to store '
+                             'samples and models')
     parser.add_argument("-d", "--dataset_path",
                         type=Path,
                         help="Path to root directory with h5 files")
     parser.add_argument('--gpu_ids', type=parse_gpu_ids, default=[0],
                         help='gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU')
-    parser.add_argument('--checkpoints_dir', type=str, default='./checkpoints',
+    parser.add_argument('--checkpoints_dir', type=Path, default='./checkpoints',
                         help='models are saved here')
     parser.add_argument('--model', type=str, default='fft',
                         help='which model to use')
@@ -50,7 +56,7 @@ def parse_options(argv):
     parser.set_defaults(norm_G='spectralspadesyncbatch3x3')
     parser.add_argument('--norm_D', type=str, default='spectralinstance',
                         help='instance normalization or batch normalization')
-    parser.add_argument('-bs', '--batch_size', type=int, default=1,
+    parser.add_argument('-bs', '--batchSize', type=int, default=1,
                         help='input batch size')
     parser.add_argument('--lr', type=float, default=0.0002,
                         help='initial learning rate for adam')
@@ -77,8 +83,20 @@ def parse_options(argv):
     parser.add_argument('--gan_mode', type=str, default='hinge',
                         help='(ls|original|hinge)')
 
-    opt, unknown = parser.parse_known_args(argv)
+    parser.add_argument('--display_freq', type=int, default=100,
+                        help='frequency of showing training results on screen')
+    parser.add_argument('--print_freq', type=int, default=100,
+                        help='frequency of showing training results on console')
+    parser.add_argument('--save_latest_freq', type=int, default=5000,
+                        help='frequency of saving the latest results')
+    parser.add_argument('--save_epoch_freq', type=int, default=10,
+                        help='frequency of saving checkpoints at the end of epochs')
 
+    parser.add_argument('--debug', action='store_true',
+                        help='only do one epoch and displays at each iteration')
+
+    opt, unknown = parser.parse_known_args(argv)
+    opt.isTrain = True
     return opt
 
 
@@ -90,20 +108,55 @@ def main(argv):
 
     dataset = ForcedIsotropicDataset(root_dir=opt.dataset_path)
 
-    dataloader = DataLoader(dataset, batch_size=opt.batch_size, shuffle=True)
+    dataloader = DataLoader(dataset, batch_size=opt.batchSize, shuffle=True)
 
     trainer = PDELTrainer(opt)
 
-    epochs = range(1)
+    # create tool for counting iterations
+    iter_counter = IterationCounter(opt, len(dataloader))
 
-    for epoch in epochs:
+    # create tool for visualization
+    visualizer = Visualizer(opt)
+
+    for epoch in iter_counter.training_epochs():
+        iter_counter.record_epoch_start(epoch)
         for i, (time_i, data_i) in enumerate(dataloader):
+            iter_counter.record_one_iteration()
+
             if i % opt.D_steps_per_G == 0:
                 trainer.run_generator_one_step(data_i)
 
             trainer.run_discriminator_one_step(data_i)
 
-        trainer.update_learning_rate(epoch)
+            trainer.update_learning_rate(epoch)
+
+            # Visualizations
+            if iter_counter.needs_printing():
+                losses = trainer.get_latest_losses()
+                visualizer.print_current_errors(epoch, iter_counter.epoch_iter,
+                                                losses, iter_counter.time_per_iter)
+                visualizer.plot_current_errors(losses,
+                                               iter_counter.total_steps_so_far)
+
+            if iter_counter.needs_displaying():
+                ...
+                # TODO save some samples
+
+            if iter_counter.needs_saving():
+                print('saving the latest model (epoch %d, total_steps %d)' %
+                      (epoch, iter_counter.total_steps_so_far))
+                trainer.save('latest')
+                iter_counter.record_current_iter()
+
+    trainer.update_learning_rate(epoch)
+    iter_counter.record_epoch_end()
+
+    if epoch % opt.save_epoch_freq == 0 or \
+            epoch == iter_counter.total_epochs:
+        print('saving the model at the end of epoch %d, iters %d' %
+              (epoch, iter_counter.total_steps_so_far))
+        trainer.save('latest')
+        trainer.save(epoch)
 
 
 if __name__ == '__main__':

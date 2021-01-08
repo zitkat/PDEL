@@ -17,7 +17,7 @@
 
 module add anaconda3-2019.10
 source activate DL_env
-cd /storage/plzen1/home/zitkat/PDEL/dataset/
+cd /storage/plzen1/home/zitkat/PDEL/dataset/ || exit
 export PYTHONPATH=/storage/plzen1/home/zitkat/PDEL/
 today=$(date +%Y%m%d%H%M)
 python data_downloader.py -ts 151 -te 151 -o . &> ./log"$today".txt
