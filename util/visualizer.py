@@ -11,6 +11,7 @@ import os
 import time
 from . import util
 from dataset import ensured_path
+from dataset.forced_isotropic_dataset import save_paraview_snapshot
 from pathlib import Path
 
 try:
@@ -18,11 +19,13 @@ try:
 except ImportError:
     from io import BytesIO         # Python 3.x
 
+
+
+
 class Visualizer():
     def __init__(self, opt):
         self.opt = opt
         self.tf_log = False  # opt.isTrain and opt.tf_log  # tensorboard logging
-        self.use_html = False  # opt.isTrain and not opt.no_html
         self.name = opt.name
         if self.tf_log:
             import tensorflow as tf
@@ -30,16 +33,14 @@ class Visualizer():
             self.log_dir = os.path.join(opt.checkpoints_dir, opt.name, 'logs')
             self.writer = tf.summary.FileWriter(self.log_dir)
 
-        if self.use_html:
-            self.web_dir = os.path.join(opt.checkpoints_dir, opt.name, 'web')
-            self.img_dir = os.path.join(self.web_dir, 'images')
-            print('create web directory %s...' % self.web_dir)
-            util.mkdirs([self.web_dir, self.img_dir])
         if opt.isTrain:
             self.log_name = ensured_path(opt.checkpoints_dir / opt.name / 'loss_log.txt')
             with open(self.log_name, "a") as log_file:
                 now = time.strftime("%c")
                 log_file.write('================ Training Loss (%s) ================\n' % now)
+
+            self.snapshots_path = ensured_path(opt.checkpoints_dir / opt.name / "snapshots/",
+                                               isdir=True)
 
     # errors: dictionary of error labels and values
     def plot_current_errors(self, errors, step):
@@ -61,3 +62,16 @@ class Visualizer():
         print(message)
         with open(self.log_name, "a") as log_file:
             log_file.write('%s\n' % message)
+
+
+    def save_paraview_snapshots(self, epoch, i, time_step, original, generated):
+        ori_snap_path = self.snapshots_path / f"{epoch}_{i}_{time_step}_original"
+        gen_snap_path = self.snapshots_path / f"{epoch}_{i}_{time_step}_generated"
+
+        save_paraview_snapshot(ori_snap_path, original, time_step)
+        save_paraview_snapshot(gen_snap_path, generated, time_step)
+
+
+
+
+

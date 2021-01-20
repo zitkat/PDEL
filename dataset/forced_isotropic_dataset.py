@@ -12,6 +12,56 @@ from pathlib import Path
 
 from dataset import Shapes
 
+xmf_template = """<?xml version="1.0" ?>
+
+<!DOCTYPE Xdmf SYSTEM "Xdmf.dtd" []>
+
+<Xdmf Version="2.0">
+
+  <Domain>
+
+    <Grid Name="Velocity" GridType="Collection" CollectionType="Temporal">
+
+      <Grid Name="Structured Grid" GridType="Uniform">
+        <Time Value="{time_step}" />
+        <Topology TopologyType="3DRectMesh" NumberOfElements="{resolution} {resolution} {resolution}"/>
+
+        <Geometry GeometryType="VXVYVZ">
+
+          <DataItem Name="Xcoor" Dimensions="{resolution}" NumberType="Float" Precision="4" Format="HDF">
+            {h5_file_name}:/xcoor
+          </DataItem>
+
+          <DataItem Name="Ycoor" Dimensions="{resolution}" NumberType="Float" Precision="4" Format="HDF">
+            {h5_file_name}:/ycoor
+          </DataItem>
+
+          <DataItem Name="Zcoor" Dimensions="{resolution}" NumberType="Float" Precision="4" Format="HDF">
+            {h5_file_name}:/zcoor
+          </DataItem>
+
+        </Geometry>
+
+
+        <Attribute Name="Velocity" AttributeType="Vector" Center="Node">
+
+          <DataItem Dimensions="{resolution} {resolution} {resolution} 3" NumberType="Float" Precision="4" Format="HDF">
+            {h5_file_name}:/u
+          </DataItem>
+        </Attribute>
+
+      </Grid>
+    </Grid>
+
+  </Domain>
+
+</Xdmf>"""
+
+
+def fill_xmf(time_step, h5_file_name, resolution=128):
+    return xmf_template.format(time_step=time_step, h5_file_name=h5_file_name,
+                               resolution=resolution)
+
 
 class ForcedIsotropicDataset(tdata.Dataset):
     """
@@ -69,12 +119,40 @@ def load_cutservice_file(file_path, ret_all=False):
     return data
 
 
+def save_cutservice_file(file_path: Path,
+                         data: torch.Tensor,
+                         coors: torch.Tensor,
+                         time_step: int):
+    data = data.squeeze().movedim(0, -1).cpu().detach().numpy()
+    with h5py.File(file_path, "w") as f:
+        f.create_dataset("u", data=data)
+        f.create_dataset("xcoor", data=coors)
+        f.create_dataset("ycoor", data=coors)
+        f.create_dataset("zcoor", data=coors)
+        f.attrs.modify("time_step", time_step)
+
+
+def prepare_coors(resolution):
+    x_ = torch.linspace(0, 6.234098, resolution)
+    coor = torch.empty((3, resolution, resolution, resolution))
+    coor[0], coor[1], coor[2] = torch.meshgrid(x_, x_, x_)
+    return coor
+
+
+def save_paraview_snapshot(path: Path, data, time_step):
+    xmf_path = path.with_suffix(".xmf")
+    h5_path = path.with_suffix(".h5")
+    with open(xmf_path, "w") as f:
+        f.write(fill_xmf(time_step, h5_path.name))
+
+    coors = torch.linspace(0, 6.234098, data.shape[-1])
+
+    save_cutservice_file(h5_path, data, coors, time_step)
+
+
 if __name__ == '__main__':
-    # load_cutservice_file("prep/isotropic1024coarse_test32_16.h5")
+    data, coors, times = load_cutservice_file("dataset/prep/isotropic1024coarse_test128_16.h5", ret_all=True)
     # load_cutservice_file("isotropic1024coarse_t100.h5")
 
-    fid = ForcedIsotropicDataset()
-    len(fid)
-
-    r1 = fid[1]
+    save_paraview_snapshot(Path("dataset/prep/isotropic1024coarse_savetest128_16"), data, 16)
     pass
