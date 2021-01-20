@@ -9,6 +9,9 @@ class Shapes:
     slatent = (3, 4, 4, 4)
 
 
-def ensured_path(path: Path):
-    path.parent.mkdir(parents=True, exist_ok=True)
+def ensured_path(path: Path, isdir=False):
+    if isdir:
+        path.mkdir(parents=True, exist_ok=True)
+    else:
+        path.parent.mkdir(parents=True, exist_ok=True)
     return path
