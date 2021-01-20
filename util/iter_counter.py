@@ -72,7 +72,9 @@ class IterationCounter:
         return (self.total_steps_so_far % self.opt.save_latest_freq) < self.opt.batchSize
 
     def needs_printing(self):
-        return True # (self.total_steps_so_far % self.opt.print_freq) < self.opt.batchSize
+        return ((self.total_steps_so_far % self.opt.print_freq) < self.opt.batchSize
+                or
+                self.opt.debug)
 
     def needs_displaying(self):
         return (self.total_steps_so_far % self.opt.display_freq) < self.opt.batchSize

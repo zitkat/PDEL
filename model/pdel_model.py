@@ -45,16 +45,15 @@ class PDELModel(nn.Module):
         can't parallelize custom functions, we branch to different
         routines based on |mode|.
         """
-        input_semantics, real_image = data[:, :, ::4, ::4, ::4], data
+        lowres, highres = data[:, :, ::4, ::4, ::4], data
 
 
         if mode == 'generator':
-            g_loss, generated = self.compute_generator_loss(
-                input_semantics, real_image)
-            return g_loss, generated
+            g_loss, generated = self.compute_generator_loss(lowres, highres)
+            l2loss = torch.linalg.norm((generated - highres), dim=(1, 2, 3, 4))
+            return g_loss, l2loss, generated
         elif mode == 'discriminator':
-            d_loss = self.compute_discriminator_loss(
-                input_semantics, real_image)
+            d_loss = self.compute_discriminator_loss(lowres, highres)
             return d_loss
         else:
             raise ValueError("|mode| is invalid")
@@ -77,8 +76,6 @@ class PDELModel(nn.Module):
     def save(self, epoch):
         util.save_network(self.netG, 'G', epoch, self.opt)
         util.save_network(self.netD, 'D', epoch, self.opt)
-        if self.opt.use_vae:
-            util.save_network(self.netE, 'E', epoch, self.opt)
 
     def _initialize_networks(self, opt):
         netG = PDELGenerator(opt)
@@ -90,28 +87,28 @@ class PDELModel(nn.Module):
                 netD = util.load_network(netD, 'D', opt.which_epoch, opt)
         return netG, netD
 
-    def compute_generator_loss(self, input_semantics, real_image):
+    def compute_generator_loss(self, lowres, highres):
         G_losses = {}
 
-        fake_image = self.generate_fake(input_semantics)
+        fake_image = self.generate_fake(lowres)
 
         pred_fake, pred_real = self.discriminate(
-            input_semantics, fake_image, real_image)
+            lowres, fake_image, highres)
 
         G_losses['GAN'] = self.criterionGAN(pred_fake, True,
                                             for_discriminator=False)
 
         return G_losses, fake_image
 
-    def compute_discriminator_loss(self, input_semantics, real_image):
+    def compute_discriminator_loss(self, lowres, highres):
         D_losses = {}
         with torch.no_grad():
-            fake_image = self.generate_fake(input_semantics)
-            fake_image = fake_image.detach()
-            fake_image.requires_grad_()
+            generated = self.generate_fake(lowres)
+            generated = generated.detach()
+            generated.requires_grad_()
 
         pred_fake, pred_real = self.discriminate(
-            input_semantics, fake_image, real_image)
+            lowres, generated, highres)
 
         D_losses['D_Fake'] = self.criterionGAN(pred_fake, False,
                                                for_discriminator=True)
@@ -120,20 +117,20 @@ class PDELModel(nn.Module):
 
         return D_losses
 
-    def generate_fake(self, input_semantics):
+    def generate_fake(self, lowres):
 
-        fake_image = self.netG(input_semantics)
+        upsamled = self.netG(lowres)
 
-        return fake_image
+        return upsamled
 
-    def discriminate(self, input_semantics, fake_image, real_image):
+    def discriminate(self, lowres, generated, highres):
         """
         Given fake and real image, return the prediction of discriminator
         for each fake and real image.
         """
-        input_semantics_up = F.interpolate(input_semantics, size=Shapes.sout[1:])
-        fake_concat = torch.cat([input_semantics_up, fake_image], dim=1)
-        real_concat = torch.cat([input_semantics_up, real_image], dim=1)
+        lowres_up = F.interpolate(lowres, size=Shapes.sout[1:])
+        fake_concat = torch.cat([lowres_up, generated], dim=1)
+        real_concat = torch.cat([lowres_up, highres], dim=1)
 
         # In Batch Normalization, the fake and real images are
         # recommended to be in the same batch to avoid disparate

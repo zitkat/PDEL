@@ -35,11 +35,12 @@ class PDELTrainer:
 
     def run_generator_one_step(self, data):
         self.optimizer_G.zero_grad()
-        g_losses, generated = self.pdel_model(data, mode='generator')
+        g_losses, l2loss, generated = self.pdel_model(data, mode='generator')
         g_loss = sum(g_losses.values()).mean()
         g_loss.backward()
         self.optimizer_G.step()
         self.g_losses = g_losses
+        self.g_losses.update({"L2": l2loss})
         self.generated = generated
 
     def run_discriminator_one_step(self, data):
