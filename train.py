@@ -72,6 +72,7 @@ def parse_options(argv):
     parser.add_argument('--no_TTUR', action='store_true',
                         help='Use TTUR training scheme')
     parser.add_argument('-citl', '--constraint_in_the_loop', action="store_true",
+                        default=False,
                         help='Include constrain in the training loop.')
     parser.add_argument('--D_steps_per_G', type=int, default=1,
                         help='number of discriminator iterations per generator '
@@ -80,6 +81,9 @@ def parse_options(argv):
                         help='number of discriminators to be used in multiscale')
     parser.add_argument('--continue_train', action='store_true',
                         help='continue training: load the latest model')
+    parser.add_argument('--which_epoch', type=str, default='latest',
+                        help='which epoch to load? set to latest to use latest cached model')
+
     parser.add_argument('--gan_mode', type=str, default='hinge',
                         help='(ls|original|hinge)')
 
@@ -87,7 +91,7 @@ def parse_options(argv):
                         help='frequency of showing training results on screen')
     parser.add_argument('--print_freq', type=int, default=100,
                         help='frequency of showing training results on console')
-    parser.add_argument('--save_latest_freq', type=int, default=5000,
+    parser.add_argument('--save_latest_freq', type=int, default=100,
                         help='frequency of saving the latest results')
     parser.add_argument('--save_epoch_freq', type=int, default=10,
                         help='frequency of saving checkpoints at the end of epochs')
@@ -139,8 +143,8 @@ def main(argv):
                                                iter_counter.total_steps_so_far)
 
             if iter_counter.needs_displaying():
-                ...
-                # TODO save some samples
+                visualizer.save_paraview_snapshots(epoch, iter_counter.epoch_iter, time_i[0],
+                                                   data_i[0], trainer.get_latest_generated()[0])
 
             if iter_counter.needs_saving():
                 print('saving the latest model (epoch %d, total_steps %d)' %
