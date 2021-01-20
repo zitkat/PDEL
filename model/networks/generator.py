@@ -26,8 +26,21 @@ class PDELGenerator(BaseNetwork):
 
         self.conv2 = nn.Conv3d(16, Shapes.soutc, kernel_size=3, padding=1)
 
-        self.constrain = PDELDivergenceConstraint()
-        pass
+        self.citl = False
+        self.constrain = None
+        if opt.constraint_in_the_loop:
+            self.enable_constraint()
+
+
+    def enable_constraint(self):
+        if self.constrain is None:
+            self.constrain = PDELDivergenceConstraint()
+            self.citl = True
+
+
+    def disable_constraint(self):
+        self.citl = False
+
 
     def forward(self, segmap):
 
@@ -46,7 +59,8 @@ class PDELGenerator(BaseNetwork):
 
         x = self.conv2(x)
 
-        x = self.constrain(x)
+        if self.citl:
+            x = self.constrain(x)
 
         return x
 
@@ -55,19 +69,18 @@ class PDELDivergenceConstraint(nn.Module):
 
     def __init__(self):
         super().__init__()
-        k_ = torch.arange(128)
+        k_ = torch.arange(1, 129)
         self.register_buffer("k", torch.empty((3, 128, 128, 128)))
         self.k[0], self.k[1], self.k[2] = torch.meshgrid(k_, k_, k_)
         self.register_buffer("kk", torch.sum(self.k ** 2, axis=0)[None, None, ...])
+        # self.kk[0, 0, 0] = 1
 
 
     def forward(self, f):
         F = torch.fft.fftn(f, dim=(2, 3, 4))
-        dF = torch.einsum('kxyz,btxyz,txyz->btxyz',
-                          -1j * self.k, F, -1j * self.k) / \
-                   self.kk
-        dF[torch.isnan(dF)] = 0
-        hatF = F - dF
+        dF = torch.einsum('kxyz,btxyz,txyz->btxyz', self.k, F, self.k)
+
+        hatF = F - dF / self.kk
         hatf = torch.fft.ifftn(hatF, dim=(2, 3, 4))
 
         return hatf.real
@@ -76,7 +89,7 @@ class PDELDivergenceConstraint(nn.Module):
 if __name__ == '__main__':
     from dataset.forced_isotropic_dataset import load_cutservice_file
     file = load_cutservice_file(
-        "../../dataset/prep/isotropic1024coarse_test128_16.h5")
+        "../dataset/prep/isotropic1024coarse_test128_16.h5")
     constr = PDELDivergenceConstraint() #.cuda(0)
     y = constr(file)
 
