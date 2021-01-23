@@ -7,7 +7,7 @@ Copyright (C) 2019 NVIDIA Corporation.  All rights reserved.
 Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
 """
 
-from model.sync_batchnorm import DataParallelWithCallback
+from model.networks.sync_batchnorm.sync_batchnorm import DataParallelWithCallback
 from model.pdel_model import PDELModel
 
 
