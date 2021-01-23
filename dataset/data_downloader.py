@@ -3,10 +3,8 @@ Script for downloading all needed dataset from
 John Hopkins Turbulenece Database
 """
 
-import os
 import sys
 import time
-from functools import wraps
 from pathlib import Path
 import argparse
 import csv
@@ -14,9 +12,9 @@ import csv
 import numpy as np
 import h5py
 import pyJHTDB
-from pyJHTDB import dbinfo as tdbinfo
 
-from dataset import Shapes, ensured_path
+from dataset import Shapes
+from util.util import ensured_path, now
 
 data_folder = r"C:\Users\tozit\MLProjects\PDEL\PDEL\dataset"
 
@@ -56,14 +54,6 @@ def read_cutfromhdf5(nt: int = None, file_path: Path = None):
         u = f["u"]
 
     return u
-
-
-def now():
-    """
-    :return: date and time as YYYYmmddhhMM
-    """
-    return time.strftime("%Y%m%d%H%M")
-
 
 class DataDownLoader:
 

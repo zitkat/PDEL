@@ -1,13 +1,12 @@
 """
-Torch enabled dataset
+Torch enabled dataset for working with JHTDB
+John Hopkins Turbulenece Database
 """
 
 import numpy as nm
 import h5py
 import torch
 import torch.utils.data as tdata
-import random
-import glob
 from pathlib import Path
 
 from dataset import Shapes

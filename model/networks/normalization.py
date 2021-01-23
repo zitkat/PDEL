@@ -8,7 +8,6 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 """
 
 import re
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from model.sync_batchnorm import SynchronizedBatchNorm2d, \
@@ -19,6 +18,7 @@ import torch.nn.utils.spectral_norm as spectral_norm
 # Returns a function that creates a normalization function
 # that does not condition on semantic map
 def get_nonspade_norm_layer(opt, norm_type='instance'):
+
     # helper function to get # output channels of the previous layer
     def get_out_channel(layer):
         if hasattr(layer, 'out_channels'):
@@ -41,13 +41,12 @@ def get_nonspade_norm_layer(opt, norm_type='instance'):
             delattr(layer, 'bias')
             layer.register_parameter('bias', None)
 
-        # TODO what with 2D norms?
         if subnorm_type == 'batch':
-            norm_layer = nn.BatchNorm2d(get_out_channel(layer), affine=True)
+            norm_layer = nn.BatchNorm3d(get_out_channel(layer), affine=True)
         elif subnorm_type == 'sync_batch':
-            norm_layer = SynchronizedBatchNorm2d(get_out_channel(layer), affine=True)
+            norm_layer = SynchronizedBatchNorm3d(get_out_channel(layer), affine=True)
         elif subnorm_type == 'instance':
-            norm_layer = nn.InstanceNorm2d(get_out_channel(layer), affine=False)
+            norm_layer = nn.InstanceNorm3d(get_out_channel(layer), affine=False)
         else:
             raise ValueError('normalization layer %s is not recognized' % subnorm_type)
 
@@ -56,22 +55,26 @@ def get_nonspade_norm_layer(opt, norm_type='instance'):
     return add_norm_layer
 
 
-# Creates SPADE normalization layer based on the given configuration
-# SPADE consists of two steps. First, it normalizes the activations using
-# your favorite normalization method, such as Batch Norm or Instance Norm.
-# Second, it applies scale and bias to the normalized output, conditioned on
-# the segmentation map.
-# The format of |config_text| is spade(norm)(ks), where
-# (norm) specifies the type of parameter-free normalization.
-#       (e.g. syncbatch, batch, instance)
-# (ks) specifies the size of kernel in the SPADE module (e.g. 3x3)
-# Example |config_text| will be spadesyncbatch3x3, or spadeinstance5x5.
-# Also, the other arguments are
-# |norm_nc|: the #channels of the normalized activations,
-#   hence the output dim of SPADE
-# |label_nc|: the #channels of the input semantic map,
-#   hence the input dim of SPADE
+
 class SPADE3D(nn.Module):
+    """
+    Creates SPADE normalization layer based on the given configuration
+    SPADE consists of two steps. First, it normalizes the activations using
+    your favorite normalization method, such as Batch Norm or Instance Norm.
+    Second, it applies scale and bias to the normalized output, conditioned on
+    the segmentation map.
+    The format of |config_text| is spade(norm)(ks), where
+    (norm) specifies the type of parameter-free normalization.
+          (e.g. syncbatch, batch, instance)
+    (ks) specifies the size of kernel in the SPADE module (e.g. 3x3)
+    Example |config_text| will be spadesyncbatch3x3, or spadeinstance5x5.
+    Also, the other arguments are
+    |norm_nc|: the #channels of the normalized activations,
+      hence the output dim of SPADE
+    |label_nc|: the #channels of the input semantic map,
+      hence the input dim of SPADE
+    """
+
     def __init__(self, config_text, norm_nc, label_nc):
         super().__init__()
 
@@ -90,8 +93,8 @@ class SPADE3D(nn.Module):
             raise ValueError('%s is not a recognized param-free norm type in SPADE'
                              % param_free_norm_type)
 
-        # The dimension of the intermediate embedding space. Yes, hardcoded. -- well fuck you!
-        nhidden = 128  # TODO original: 128 is too memory intensive, is this enough?
+        # The dimension of the intermediate embedding space. Yes, hardcoded.
+        nhidden = 128
 
         pw = ks // 2
         self.mlp_shared = nn.Sequential(

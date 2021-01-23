@@ -14,7 +14,7 @@ from model.pdel_model import PDELModel
 class PDELTrainer:
     """
     Trainer creates the model and optimizers, and uses them to
-    updates the weights of the network while reporting losses
+    update the weights of the network while reporting losses
     and the latest visuals to visualize the progress in training.
     """
 

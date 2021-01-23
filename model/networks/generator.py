@@ -73,7 +73,6 @@ class PDELDivergenceConstraint(nn.Module):
         self.register_buffer("k", torch.empty((3, 128, 128, 128)))
         self.k[0], self.k[1], self.k[2] = torch.meshgrid(k_, k_, k_)
         self.register_buffer("kk", torch.sum(self.k ** 2, axis=0)[None, None, ...])
-        # self.kk[0, 0, 0] = 1
 
 
     def forward(self, f):
@@ -90,7 +89,7 @@ if __name__ == '__main__':
     from dataset.forced_isotropic_dataset import load_cutservice_file
     file = load_cutservice_file(
         "../dataset/prep/isotropic1024coarse_test128_16.h5")
-    constr = PDELDivergenceConstraint() #.cuda(0)
+    constr = PDELDivergenceConstraint()#.cuda(0)
     y = constr(file)
 
     pass
