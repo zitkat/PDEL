@@ -9,13 +9,10 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 
 import time
 from pathlib import Path
-
-import torch
-import numpy as np
-from PIL import Image
 import os
 import argparse
 
+import torch
 
 def copyconf(default_opt, **kwargs):
     """
@@ -28,19 +25,6 @@ def copyconf(default_opt, **kwargs):
         print(key, kwargs[key])
         setattr(conf, key, kwargs[key])
     return conf
-
-
-def save_image(image_numpy, image_path, create_dir=False):
-    if create_dir:
-        os.makedirs(os.path.dirname(image_path), exist_ok=True)
-    if len(image_numpy.shape) == 2:
-        image_numpy = np.expand_dims(image_numpy, axis=2)
-    if image_numpy.shape[2] == 1:
-        image_numpy = np.repeat(image_numpy, 3, 2)
-    image_pil = Image.fromarray(image_numpy)
-
-    # save to png
-    image_pil.save(image_path.replace('.jpg', '.png'))
 
 
 def now():

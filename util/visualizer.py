@@ -10,7 +10,6 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 import os
 from util.util import ensured_path
 from dataset.forced_isotropic_dataset import save_paraview_snapshot
-from pathlib import Path
 
 try:
     from StringIO import StringIO  # Python 2.7

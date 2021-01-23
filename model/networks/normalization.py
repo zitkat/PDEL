@@ -10,9 +10,10 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 import re
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.nn.utils.spectral_norm as spectral_norm
+
 from model.networks.sync_batchnorm.sync_batchnorm import SynchronizedBatchNorm2d, \
     SynchronizedBatchNorm3d
-import torch.nn.utils.spectral_norm as spectral_norm
 
 
 # Returns a function that creates a normalization function
