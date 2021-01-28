@@ -69,11 +69,11 @@ def parse_options(argv):
     parser.add_argument('--gan_mode', type=str, default='hinge',
                         help='(ls|original|hinge)')
 
-    parser.add_argument('--display_freq', type=int, default=1400,
+    parser.add_argument('--display_freq', type=int, default=1500,
                         help='frequency of showing training results on screen')
     parser.add_argument('--print_freq', type=int, default=350,
                         help='frequency of showing training results on console')
-    parser.add_argument('--save_latest_freq', type=int, default=1400,
+    parser.add_argument('--save_latest_freq', type=int, default=1000,
                         help='frequency of saving the latest results')
     parser.add_argument('--save_epoch_freq', type=int, default=5,
                         help='frequency of saving checkpoints at the end of epochs')
