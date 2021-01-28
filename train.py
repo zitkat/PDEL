@@ -12,11 +12,13 @@ import sys
 import torch
 from torch.utils.data import DataLoader
 
+
 # local imports
 from dataset.forced_isotropic_dataset import ForcedIsotropicDataset
 from model.pdel_trainer import PDELTrainer
 from util.iter_counter import IterationCounter
 from util.options import parse_options
+from util.util import get_split
 from util.visualizer import Visualizer
 
 
@@ -28,7 +30,7 @@ def main(argv):
     opt.isTrain = True
 
     dataset = ForcedIsotropicDataset(root_dir=opt.dataset_path)
-    split = [int(len(dataset) * s) for s in (.7, .1, .2)]
+    split = get_split(len(dataset), (.7, .1, .2))
     data_train, _, _ = torch.utils.data.random_split(
             dataset, lengths=split, generator=torch.Generator().manual_seed(42))
 
@@ -82,8 +84,8 @@ def main(argv):
 
         if epoch % opt.save_epoch_freq == 0 or epoch == iter_counter.total_epochs:
             iter_counter.printlog('saving the model at the end of '
-                                  'epoch {epoch}, '
-                                  'iters {iter_counter.total_steps_so_far}')
+                                  f'epoch {epoch}, '
+                                  f'iters {iter_counter.total_steps_so_far}')
             trainer.save('latest')
             trainer.save(epoch)
 

@@ -70,6 +70,7 @@ class ForcedIsotropicDataset(tdata.Dataset):
     Getting an item returns time step in simulation (which is not the same as
     index of an item) and the actual data of shape 3 x 128 x 128 x 128
     """
+    coors = torch.linspace(0, 6.234098, 128)
 
     def __init__(self, root_dir=Path("dataset/dltest/"), vel_key="u"):
         self.root_dir = Path(root_dir)
@@ -146,7 +147,7 @@ def save_paraview_snapshot(path: Path, data, time_step):
 
     coors = torch.linspace(0, 6.234098, data.shape[-1])
 
-    save_cutservice_file(h5_path, data, coors, time_step)
+    save_cutservice_file(h5_path, data, ForcedIsotropicDataset.coors, time_step)
 
 
 if __name__ == '__main__':

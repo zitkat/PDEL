@@ -28,9 +28,8 @@ class Visualizer:
             self.log_dir = os.path.join(opt.checkpoints_dir, opt.name, 'logs')
             self.writer = tf.summary.FileWriter(self.log_dir)
 
-        if opt.isTrain:
-            self.snapshots_path = ensured_path(opt.checkpoints_dir / opt.name / "snapshots/",
-                                               isdir=True)
+        self.snapshots_path = ensured_path(opt.checkpoints_dir / opt.name / "snapshots/",
+                                           isdir=True)
 
     # errors: dictionary of error labels and values
     def plot_current_errors(self, errors, step):

@@ -75,7 +75,7 @@ def parse_options(argv):
                         help='frequency of showing training results on console')
     parser.add_argument('--save_latest_freq', type=int, default=1400,
                         help='frequency of saving the latest results')
-    parser.add_argument('--save_epoch_freq', type=int, default=10,
+    parser.add_argument('--save_epoch_freq', type=int, default=5,
                         help='frequency of saving checkpoints at the end of epochs')
 
     parser.add_argument('--debug', action='store_true',

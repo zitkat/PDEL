@@ -11,8 +11,25 @@ import time
 from pathlib import Path
 import os
 import argparse
+from math import floor, ceil
 
 import torch
+
+
+def get_split(N, ratios):
+
+    if sum(ratios) != 1.0:
+        raise ValueError("Rations must sum to one.")
+
+    rts = list(ratios)
+    maxrt = max(rts)
+    rts.remove(maxrt)
+
+    split = [ceil(N * maxrt)] + [floor(N * rt) for rt in rts]
+    return split
+
+
+
 
 def copyconf(default_opt, **kwargs):
     """

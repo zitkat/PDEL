@@ -55,6 +55,10 @@ class PDELModel(nn.Module):
         elif mode == 'discriminator':
             d_loss = self.compute_discriminator_loss(lowres, highres)
             return d_loss
+        elif mode == 'inference':
+            with torch.no_grad():
+                g_loss, generated = self.compute_generator_loss(lowres, highres)
+                return g_loss, generated
         else:
             raise ValueError("|mode| is invalid")
 
